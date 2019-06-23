@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+</head>
+
+<body>
+  <style>
+    #pic {
+      border: blue solid thin;
+    }
+  </style>
+  <div>
+    <button id="reset">Reset</button>
+    <button id="rust_g">Rust Grey</button>
+    <button id="javascript8_g">Javascript 8bit Grey</button>
+    <button id="javascript32_g">Javascript 32bit Grey</button>
+  </div>
+  <canvas id="pic" width="512" height="512"> </canvas>
+
+  <script>
+    function loadImage(url) {
+      return new Promise((resolve, reject) => {
+        let img = new Image();
+        img.addEventListener('load', e => resolve(img));
+        img.addEventListener('error', () => {
+          reject(new Error(`Failed to load image's URL: ${url}`));
+        });
+        img.src = url;
+      });
+    }
+
+    async function loadAndRun() {
+      const importObj = {
+        env: {
+          abort: function () { console.log('xxx'); }
+        }
+      };
+      // load rust wasm
+      const request = await fetch('build/optimized.wasm');
+      const wasmBuffer = await request.arrayBuffer();
+      const wasm = await WebAssembly.instantiate(wasmBuffer, importObj);
+      const { memory } = wasm.instance.exports;
+      const imageProc = { wasm, memory };
+
+      // load test image
+      const currentImage = await loadImage('baboon256.png');
+      const { width, height } = currentImage;
+      const imgSize = width * height * 4; //32bits per pixel
+      imageProc.currentImage = currentImage;
+      imageProc.imgSize = imgSize;
+
+      // allocate memory for wasm instance for images
+      memory.grow(Math.ceil(imgSize / (1 << 16)) * 2); // add heap memory for images
+      /*
+         output from 
+      //const heapBase = wasm.instance.exports.__heap_base.value;
+
+      */
+      const heapBase = 65536;
+      console.log(memory, wasm);
+
+      // draw and copy test image
+      const canvas = document.getElementById('pic');
+      const { width: canvasW, height: canvasH } = canvas;
+      const ctx = canvas.getContext('2d');
+      const dx = (canvasW - width) / 2;
+      const dy = (canvasH - height) / 2;
+      imageProc.dx = dx;
+      imageProc.dy = dy;
+      ctx.drawImage(currentImage, dx, dy);
+      const dlImageBuffer = ctx.getImageData(dx, dy, width, height);
+
+      // assign memory for image data in heap area
+      const srcAddr = heapBase;
+      const destAddr = heapBase + imgSize;
+      imageProc.imgSrc = new Uint8ClampedArray(memory.buffer, srcAddr, imgSize);
+      // copy image, see above
+      imageProc.imgSrc.set(dlImageBuffer.data);
+      imageProc.imgDest = new Uint8ClampedArray(memory.buffer, destAddr, imgSize);
+      imageProc.srcAddr = srcAddr;
+      imageProc.destAddr = destAddr;
+
+      // create image data
+      imageProc.imgDataSrc = new ImageData(imageProc.imgSrc, currentImage.width);
+      imageProc.imgDataDest = new ImageData(imageProc.imgDest, currentImage.width);
+
+      window.imageProc = imageProc; // export data
+    }
+    loadAndRun();
+  </script>
+
+  <script>
+    let canvas = document.getElementById('pic');
+    let resetB = document.getElementById('reset');
+    let rustGB = document.getElementById('rust_g');
+    let javascript8GB = document.getElementById('javascript8_g');
+    let javascript32GB = document.getElementById('javascript32_g');
+
+    resetB.addEventListener('click', (evt) => {
+      const { imgDataSrc, dx, dy } = imageProc;
+      const ctx = canvas.getContext('2d');
+      ctx.putImageData(imgDataSrc, dx, dy);
+    });
+
+    rustGB.addEventListener('click', (evt) => {
+
+      const { width, height } = imageProc.currentImage;
+      const { grey_scale } = imageProc.wasm.instance.exports;
+      const { imgDataDest, srcAddr, destAddr, dx, dy } = imageProc;
+
+      let start = performance.now();
+      grey_scale(srcAddr, destAddr, width, height);
+      let elpased = performance.now() - start;
+      console.log('rust time', elpased);
+
+      const ctx = canvas.getContext('2d');
+      ctx.putImageData(imgDataDest, dx, dy);
+    });
+
+    javascript8GB.addEventListener('click', (evt) => {
+      const { imgDataDest, imgSrc, imgDest, dx, dy } = imageProc;
+      const ctx = canvas.getContext('2d');
+
+      // byte
+      let start = performance.now();
+      for (let i = 0; i < imgDest.length / 4; i++) {
+        let j = i * 4;
+        let avg = (imgSrc[j] + imgSrc[j + 1] + imgSrc[j + 2]) / 3;
+        imgDest[j] = avg;
+        imgDest[j + 1] = avg;
+        imgDest[j + 2] = avg;
+        imgDest[j + 3] = 255;
+      }
+      let elpased = performance.now() - start;
+      console.log('javascript 8 time', elpased);
+
+      ctx.putImageData(imgDataDest, dx, dy);
+    });
+    javascript32GB.addEventListener('click', (evt) => {
+      const {
+        memory, srcAddr, destAddr, imgSize,
+        imgDataDest, imgSrc, imgDest, dx, dy } = imageProc;
+      const ctx = canvas.getContext('2d');
+
+      // 32bit access
+      const dest = new Uint32Array(memory.buffer, destAddr, imgSize / 4);
+      const src = new Uint32Array(memory.buffer, srcAddr, imgSize / 4);
+      let start = performance.now();
+      // same alogrithm as rust
+      for (let i = 0; i < dest.length; i++) {
+        let pixel = src[i];
+        let red = pixel & 0xff;
+        let green = (pixel >> 8) & 0xff;
+        let blue = (pixel >> 16) & 0xff;
+        let grey = ((red + green + blue) / 3) & 0xff;
+        dest[i] = grey | (grey << 8) | (grey << 16) | (0xff << 24);
+      }
+      let elpased = performance.now() - start;
+      console.log('javascript 32 time', elpased);
+
+      ctx.putImageData(imgDataDest, dx, dy);
+    });
+  </script>
+</body>
+
+</html>
