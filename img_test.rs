@@ -21,12 +21,18 @@ fn grey_scale( src: usize, dst : usize, w : usize, h :usize ) {
         dst_img = from_raw_parts_mut::<u32>(dst as *mut u32, size);
     }
     
-    for i in 0..size {
-        let pixel = src_img[i];
-        let red = pixel & 0xff;
-        let green = (pixel>>8) & 0xff;
-        let blue = (pixel>>16) & 0xff;
-        let grey = ((red+green+blue) / 3) & 0xff;
-        dst_img[i] = grey | (grey<<8) | (grey<<16) | (0xff<<24);
+    for i in 0..w { // 4 changed to 0
+        for j in 0..h { // 4 changed to 0
+            // let pixel1 = src_img[((i * w * 4) + (j * 4))];
+            let pixel1 = src_img[(i * w) + j];
+
+            let red = pixel1 & 0xff;
+            let green = (pixel1 >> 8) & 0xff;
+            let blue = (pixel1 >> 16) & 0xff;
+            let grey = ((red + green + blue) / 3) & 0xff;
+            //dst_img[i] = grey | (grey<<8) | (grey<<16) | (0xff<<24);
+            // only blue
+            dst_img[(i * w) + j] = grey | (grey<<8) | (grey<<16) | (0xff<<24);
+        }
     }
 }

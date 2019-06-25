@@ -37,7 +37,10 @@
         }
       };
       // load rust wasm
-      const request = await fetch('build/optimized.wasm');
+      const rustLocation = 'build/optimized.wasm';
+      const assemblyScriptLocation = 'img_test.wasm';
+
+      const request = await fetch(assemblyScriptLocation);
       const wasmBuffer = await request.arrayBuffer();
       const wasm = await WebAssembly.instantiate(wasmBuffer, importObj);
       const { memory } = wasm.instance.exports;
