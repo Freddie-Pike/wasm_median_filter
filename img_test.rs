@@ -21,8 +21,8 @@ fn grey_scale( src: usize, dst : usize, w : usize, h :usize ) {
         dst_img = from_raw_parts_mut::<u32>(dst as *mut u32, size);
     }
     
-    for i in 0..w { // 4 changed to 0
-        for j in 0..h { // 4 changed to 0
+    for i in 0..w { 
+        for j in 0..h { 
             let pixel1 = src_img[((i - 1) * w) + (j - 1)];
             let pixel2 = src_img[((i - 1) * w) + j];
             let pixel3 = src_img[((i - 1) * w) + (j + 1)];
@@ -72,7 +72,6 @@ fn grey_scale( src: usize, dst : usize, w : usize, h :usize ) {
             let red = pixel1 & 0xff;
             let green = (pixel1 >> 8) & 0xff;
             let blue = (pixel1 >> 16) & 0xff;
-            let grey = ((red + green + blue) / 3) & 0xff;
             dst_img[(i * w) + j] = red_sum | (green_sum<<8) | (blue_sum<<16) | (0xff<<24);
         }
     }
