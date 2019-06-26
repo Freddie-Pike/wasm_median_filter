@@ -1,5 +1,4 @@
 export function grey_scale(src: u32, dst: u32, w: u32, h: u32): void {
-  const size: u32 = w * h;
   for (let i: u32 = 0; i < w; i++) {
     for (let j: u32 = 0; j < h; j++) {
       let pixel1: u32 = load<u32>(src + (((i - 1) * w * 4) + ((j - 1) * 4)));
