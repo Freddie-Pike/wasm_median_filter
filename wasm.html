@@ -37,8 +37,8 @@
         }
       };
       // Either load Rust or AssemblyScript file.
-      const rustLocation = 'build/optimized.wasm';
-      const assemblyScriptLocation = 'img_test.wasm';
+      const assemblyScriptLocation = 'build/optimized.wasm';
+      const rustLocation = 'img_test.wasm';
 
       const request = await fetch(assemblyScriptLocation);
       const wasmBuffer = await request.arrayBuffer();
@@ -100,6 +100,13 @@
     let javascript8GB = document.getElementById('javascript8_g');
     let javascript32GB = document.getElementById('javascript32_g');
 
+    function timer(callbackName, callback, srcAddr, destAddr, width, height) {
+      console.time(`${callbackName} timer`);
+      let callbackReturnValue = callback(srcAddr, destAddr, width, height);
+      console.timeEnd(`${callbackName} timer`);
+      return callbackReturnValue;
+    }
+
     resetB.addEventListener('click', (evt) => {
       const { imgDataSrc, dx, dy } = imageProc;
       const ctx = canvas.getContext('2d');
@@ -112,10 +119,9 @@
       const { grey_scale } = imageProc.wasm.instance.exports;
       const { imgDataDest, srcAddr, destAddr, dx, dy } = imageProc;
 
-      let start = performance.now();
-      grey_scale(srcAddr, destAddr, width, height);
-      let elpased = performance.now() - start;
-      console.log('rust time', elpased);
+      for (let i = 0; i < 20; i++) {
+        timer("Rust Grey Scale", grey_scale, srcAddr, destAddr, width, height);
+      }
 
       const ctx = canvas.getContext('2d');
       ctx.putImageData(imgDataDest, dx, dy);
