@@ -166,7 +166,7 @@
           gsum = (gsum | 0) / 9;
           bsum = (bsum | 0) / 9;
 
-          dest[(i * width) + j] = rsum | gsum | bsum;
+          dest[(i * width * 4) + j] = rsum | gsum | bsum;
         }
       }
 
