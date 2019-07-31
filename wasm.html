@@ -142,49 +142,34 @@
       console.log(`imgDest is ${imgDest}`);
       for (let i = 0; i < width; i++) {
         for (let j = 0; j < height; j++) {
-          let redSum = 0;
-          redSum += src[((i - 1) * width * 4) + (j - 1) * 4] | 0;
-          redSum += src[((i - 1) * width * 4) + j * 4] | 0;
-          redSum += src[((i - 1) * width * 4) + (j + 1) * 4] | 0;
-          redSum += src[(i * width * 4) + (j - 1) * 4] | 0;
-          redSum += src[(i * width * 4) + j * 4] | 0;
-          redSum += src[(i * width * 4) + (j + 1) * 4] | 0;
-          redSum += src[((i + 1) * width * 4) + (j - 1) * 4] | 0;
-          redSum += src[((i + 1) * width * 4) + j * 4] | 0;
-          redSum += src[((i + 1) * width * 4) + (j + 1) * 4] | 0;
-          redSum = Math.floor(redSum / 9);
+          let redKernel = new Uint32Array(3 * 3);
+          let greenKernel = new Uint32Array(3 * 3);
+          let blueKernel = new Uint32Array(3 * 3);
+          let off = 0;
+          for (let r = i - 1; r <= i + 1; r++) {
+            for (let c = j - 1; c <= j + 1; c++) {
+              redKernel[off] = src[(((r * width * 4) + c * 4))]
+              greenKernel[off] = src[(((r * width * 4) + c * 4)) + 1]
+              blueKernel[off] = src[(((r * width * 4) + c * 4)) + 2]
+              off++;
+            }
+          }
 
-          let greenSum = 0;
-          greenSum += src[(((i - 1) * width * 4) + (j - 1) * 4) + 1] | 0;
-          greenSum += src[(((i - 1) * width * 4) + j * 4) + 1] | 0;
-          greenSum += src[(((i - 1) * width * 4) + (j + 1) * 4) + 1] | 0;
-          greenSum += src[((i * width * 4) + (j - 1) * 4) + 1] | 0;
-          greenSum += src[((i * width * 4) + j * 4) + 1] | 0;
-          greenSum += src[((i * width * 4) + (j + 1) * 4) + 1] | 0;
-          greenSum += src[(((i + 1) * width * 4) + (j - 1) * 4) + 1] | 0;
-          greenSum += src[(((i + 1) * width * 4) + j * 4) + 1] | 0;
-          greenSum += src[(((i + 1) * width * 4) + (j + 1) * 4) + 1] | 0;
-          greenSum = Math.floor(greenSum / 9);
+          let rsum = 0, gsum = 0, bsum = 0;
+          for (let r = 0; r < redKernel.length; r++) {
+            rsum += redKernel[r];
+            gsum += greenKernel[r];
+            bsum += blueKernel[r];
+          }
 
+          rsum = (rsum | 0) / 9;
+          gsum = (gsum | 0) / 9;
+          bsum = (bsum | 0) / 9;
 
-          let blueSum = 0;
-          blueSum += src[(((i - 1) * width * 4) + (j - 1) * 4) + 2] | 0;
-          blueSum += src[(((i - 1) * width * 4) + j * 4) + 2] | 0;
-          blueSum += src[(((i - 1) * width * 4) + (j + 1) * 4) + 2] | 0;
-          blueSum += src[((i * width * 4) + (j - 1) * 4) + 2] | 0;
-          blueSum += src[((i * width * 4) + j * 4) + 2] | 0;
-          blueSum += src[((i * width * 4) + (j + 1) * 4) + 2] | 0;
-          blueSum += src[(((i + 1) * width * 4) + (j - 1) * 4) + 2] | 0;
-          blueSum += src[(((i + 1) * width * 4) + j * 4) + 2] | 0;
-          blueSum += src[(((i + 1) * width * 4) + (j + 1) * 4) + 2] | 0;
-          blueSum = Math.floor(blueSum / 9);
-
-          dest[(i * width) + j] = redSum | greenSum | blueSum << 16 | (0xff << 24);
+          dest[(i * width) + j] = rsum | gsum | bsum;
         }
       }
 
-      console.log(`imgDataDest is ${imgDataDest}`);
-      console.log(`imgDest is ${imgDest}`);
       ctx.putImageData(imgDataDest, dx, dy);
     });
     javascript32GB.addEventListener('click', (evt) => {
