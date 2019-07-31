@@ -40,7 +40,7 @@
       const assemblyScriptLocation = 'build/optimized.wasm';
       const rustLocation = 'img_test.wasm';
 
-      const request = await fetch(assemblyScriptLocation);
+      const request = await fetch(rustLocation);
       const wasmBuffer = await request.arrayBuffer();
       const wasm = await WebAssembly.instantiate(wasmBuffer, importObj);
       const { memory } = wasm.instance.exports;
@@ -128,22 +128,63 @@
     });
 
     javascript8GB.addEventListener('click', (evt) => {
-      const { imgDataDest, imgSrc, imgDest, dx, dy } = imageProc;
+      const {
+        memory, srcAddr, destAddr, imgSize,
+        imgDataDest, imgSrc, imgDest, dx, dy } = imageProc;
       const ctx = canvas.getContext('2d');
+      const { width, height } = imageProc.currentImage;
 
-      // byte
-      let start = performance.now();
-      for (let i = 0; i < imgDest.length / 4; i++) {
-        let j = i * 4;
-        let avg = (imgSrc[j] + imgSrc[j + 1] + imgSrc[j + 2]) / 3;
-        imgDest[j] = avg;
-        imgDest[j + 1] = avg;
-        imgDest[j + 2] = avg;
-        imgDest[j + 3] = 255;
+      // 8bit access
+      const dest = new Uint8Array(memory.buffer, destAddr, imgSize);
+      const src = new Uint8Array(memory.buffer, srcAddr, imgSize);
+
+      console.log(`imgDataDest is ${imgDataDest}`);
+      console.log(`imgDest is ${imgDest}`);
+      for (let i = 0; i < width; i++) {
+        for (let j = 0; j < height; j++) {
+          let redSum = 0;
+          redSum += src[((i - 1) * width * 4) + (j - 1) * 4] | 0;
+          redSum += src[((i - 1) * width * 4) + j * 4] | 0;
+          redSum += src[((i - 1) * width * 4) + (j + 1) * 4] | 0;
+          redSum += src[(i * width * 4) + (j - 1) * 4] | 0;
+          redSum += src[(i * width * 4) + j * 4] | 0;
+          redSum += src[(i * width * 4) + (j + 1) * 4] | 0;
+          redSum += src[((i + 1) * width * 4) + (j - 1) * 4] | 0;
+          redSum += src[((i + 1) * width * 4) + j * 4] | 0;
+          redSum += src[((i + 1) * width * 4) + (j + 1) * 4] | 0;
+          redSum = Math.floor(redSum / 9);
+
+          let greenSum = 0;
+          greenSum += src[(((i - 1) * width * 4) + (j - 1) * 4) + 1] | 0;
+          greenSum += src[(((i - 1) * width * 4) + j * 4) + 1] | 0;
+          greenSum += src[(((i - 1) * width * 4) + (j + 1) * 4) + 1] | 0;
+          greenSum += src[((i * width * 4) + (j - 1) * 4) + 1] | 0;
+          greenSum += src[((i * width * 4) + j * 4) + 1] | 0;
+          greenSum += src[((i * width * 4) + (j + 1) * 4) + 1] | 0;
+          greenSum += src[(((i + 1) * width * 4) + (j - 1) * 4) + 1] | 0;
+          greenSum += src[(((i + 1) * width * 4) + j * 4) + 1] | 0;
+          greenSum += src[(((i + 1) * width * 4) + (j + 1) * 4) + 1] | 0;
+          greenSum = Math.floor(greenSum / 9);
+
+
+          let blueSum = 0;
+          blueSum += src[(((i - 1) * width * 4) + (j - 1) * 4) + 2] | 0;
+          blueSum += src[(((i - 1) * width * 4) + j * 4) + 2] | 0;
+          blueSum += src[(((i - 1) * width * 4) + (j + 1) * 4) + 2] | 0;
+          blueSum += src[((i * width * 4) + (j - 1) * 4) + 2] | 0;
+          blueSum += src[((i * width * 4) + j * 4) + 2] | 0;
+          blueSum += src[((i * width * 4) + (j + 1) * 4) + 2] | 0;
+          blueSum += src[(((i + 1) * width * 4) + (j - 1) * 4) + 2] | 0;
+          blueSum += src[(((i + 1) * width * 4) + j * 4) + 2] | 0;
+          blueSum += src[(((i + 1) * width * 4) + (j + 1) * 4) + 2] | 0;
+          blueSum = Math.floor(blueSum / 9);
+
+          dest[(i * width) + j] = redSum | greenSum | blueSum << 16 | (0xff << 24);
+        }
       }
-      let elpased = performance.now() - start;
-      console.log('javascript 8 time', elpased);
 
+      console.log(`imgDataDest is ${imgDataDest}`);
+      console.log(`imgDest is ${imgDest}`);
       ctx.putImageData(imgDataDest, dx, dy);
     });
     javascript32GB.addEventListener('click', (evt) => {
@@ -162,64 +203,31 @@
       // same alogrithm as rust
       for (let i = 0; i < width; i++) {
         for (let j = 0; j < height; j++) {
-          let pixel1 = src[((i - 1) * width * 4) + ((j - 1) * 4)];
-          let pixel2 = src[((i - 1) * width * 4) + (j * 4)];
-          let pixel3 = src[((i - 1) * width * 4) + ((j + 1) * 4)];
-          let pixel4 = src[(i * width * 4) + ((j - 1) * 4)];
-          let pixel5 = src[(i * width * 4) + (j * 4)];
-          let pixel6 = src[(i * width * 4) + ((j + 1) * 4)];
-          let pixel7 = src[((i + 1) * width * 4) + ((j - 1) * 4)];
-          let pixel8 = src[((i + 1) * width * 4) + (j * 4)];
-          let pixel9 = src[((i + 1) * width * 4) + ((j + 1) * 4)];
+          let kern = new Uint32Array(3 * 3);
+          let off = 0;
+          for (let r = i - 1; r <= i + 1; r++) {
+            for (let c = j - 1; c <= j + 1; c++) {
+              kern[off] = src[(((r * width) + c))];
+              off++;
+            }
+          }
 
-          let redSum = 0;
-          redSum += pixel1 & 0xff;
-          redSum += pixel2 & 0xff;
-          redSum += pixel3 & 0xff;
-          redSum += pixel4 & 0xff;
-          redSum += pixel5 & 0xff;
-          redSum += pixel6 & 0xff;
-          redSum += pixel7 & 0xff;
-          redSum += pixel8 & 0xff;
-          redSum += pixel9 & 0xff;
-          redSum = Math.floor(redSum / 9);
+          let rsum = 0, gsum = 0, bsum = 0;
+          for (let r = 0; r < kern.length; r++) {
+            rsum += kern[r] & 0xff;
+            gsum += (kern[r] >> 8) & 0xff;
+            bsum += (kern[r] >> 16) & 0xff;
+          }
 
-          let greenSum = 0;
-          greenSum += (pixel1 >> 8) & 0xff;
-          greenSum += (pixel2 >> 8) & 0xff;
-          greenSum += (pixel3 >> 8) & 0xff;
-          greenSum += (pixel4 >> 8) & 0xff;
-          greenSum += (pixel5 >> 8) & 0xff;
-          greenSum += (pixel6 >> 8) & 0xff;
-          greenSum += (pixel7 >> 8) & 0xff;
-          greenSum += (pixel8 >> 8) & 0xff;
-          greenSum += (pixel9 >> 8) & 0xff;
-          greenSum = Math.floor(greenSum / 9);
+          rsum = (rsum | 0) / 9;
+          gsum = (gsum | 0) / 9;
+          bsum = (bsum | 0) / 9;
 
-
-
-          let blueSum = 0;
-          blueSum += (pixel1 >> 16) & 0xff;
-          blueSum += (pixel2 >> 16) & 0xff;
-          blueSum += (pixel3 >> 16) & 0xff;
-          blueSum += (pixel4 >> 16) & 0xff;
-          blueSum += (pixel5 >> 16) & 0xff;
-          blueSum += (pixel6 >> 16) & 0xff;
-          blueSum += (pixel7 >> 16) & 0xff;
-          blueSum += (pixel8 >> 16) & 0xff;
-          blueSum += (pixel9 >> 16) & 0xff;
-          blueSum = Math.floor(blueSum / 9);
-
-
-          let red = pixel5 & 0xff;
-          let green = (pixel5 >> 8) & 0xff;
-          let blue = (pixel5 >> 16) & 0xff;
-          let grey = ((red + green + blue) / 3) & 0xff;
-          dest[(i * width * 4) + (j * 4)] = redSum | (greenSum << 8) | (blueSum << 16) | (0xff << 24);
+          dest[(i * width) + j] = rsum | (gsum << 8) | (bsum << 16) | (0xff << 24);
         }
       }
       let elpased = performance.now() - start;
-      console.log('javascript 32 time', elpased);
+      console.log('javascript 32bit time', elpased);
 
       ctx.putImageData(imgDataDest, dx, dy);
     });
